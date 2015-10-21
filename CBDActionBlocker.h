@@ -1,9 +1,8 @@
 //
-//  LVDebounce.h
-//  LayerVault
+//  CBDActionBlocker
 //
-//  Created by Kelly Sutton on 7/23/13.
-//  Copyright (c) 2013 LayerVault. Licensed under the MIT License.
+//  Created by Colas Bardavid on 21/oct/2015.
+//  Copyright (c) 2015 Colas Bardavid. Licensed under the MIT License.
 //
 
 #import <Foundation/Foundation.h>

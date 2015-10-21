@@ -44,8 +44,8 @@ Here's a trite example:
 
 The `resetBlocking` option does the following:
 
- - If `action` has been fired at time `100` with a `10`s blocking,
- - If at time `105`, the `action` is asked to be fired with a `10`s blocking:
+If an `action` has been fired at time `100` with a `10`s blocking,
+and if at time `105`, the `action` is asked to be fired with a `10`s blocking:
     - with `resetBlocking:YES`, it will not be fired and be blocked until `115`
     - with `resetBlocking:NO`, it will not be fired but will still be blocked until `110`
 
