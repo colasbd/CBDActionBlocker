@@ -31,6 +31,8 @@ Here's a trite example:
 }
 ```
 
+## The `resetBlocking` option
+
 The `resetBlocking` option does the following:
 
  - If `action` has been fired at time `100` with a `10`s blocking,
