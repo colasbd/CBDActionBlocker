@@ -11,6 +11,15 @@ Put this in your Podfile and smoke it:
 pod 'CBDActionBlocker'
 ```
 
+
+## One method
+
+This pod has only one method:
+
+```Objective-C
++ (void)fireTarget:(id)target selector:(SEL)aSelector blockFiresDuring:(NSTimeInterval)seconds resetBlocking:(BOOL)resetBlocking;
+```
+
 ## Usage
 
 It's a pretty simple frameword, inspired by [`LVDebounce`](https://github.com/layervault/LVDebounce).
