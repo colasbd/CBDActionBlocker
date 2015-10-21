@@ -12,12 +12,15 @@ static NSMutableDictionary *timestamps = nil;
 @implementation CBDActionBlocker
 
 + (void)initialize
-{    
-    if (self == [CBDActionBlocker class]
-        &&
-        !timestamps)
+{
+    if (self == [CBDActionBlocker class])
     {
-        timestamps = [NSMutableDictionary dictionary];
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            
+            timestamps = [NSMutableDictionary dictionary];
+            
+        });
     }
 }
 
@@ -36,6 +39,7 @@ static NSMutableDictionary *timestamps = nil;
             {
                 if (resetBlocking)
                 {
+                    [self fireTarget:target selector:aSelector];
                     [self registerTimestamp:currentTimestamp+seconds forKey:eventKey];
                 }
             }
