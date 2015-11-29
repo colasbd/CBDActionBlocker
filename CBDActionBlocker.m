@@ -11,6 +11,12 @@ static NSMutableDictionary *timestamps = nil;
 
 @implementation CBDActionBlocker
 
+
+/**************************************/
+#pragma mark - Create global data at initialize
+/**************************************/
+
+
 + (void)initialize
 {
     if (self == [CBDActionBlocker class])
@@ -24,7 +30,16 @@ static NSMutableDictionary *timestamps = nil;
     }
 }
 
-+ (void)fireTarget:(id)target selector:(SEL)aSelector  blockFiresDuring:(NSTimeInterval)seconds resetBlocking:(BOOL)resetBlocking
+
+
+
+/**************************************/
+#pragma mark - Main method
+/**************************************/
+
+
+
++ (void)fireTarget:(id)target selector:(SEL)aSelector blockFiresDuring:(NSTimeInterval)seconds resetBlocking:(BOOL)resetBlocking
 {
     @synchronized(self)
     {
@@ -33,29 +48,66 @@ static NSMutableDictionary *timestamps = nil;
         NSArray *eventKey = @[target, NSStringFromSelector(aSelector)];
         NSNumber *timestamp = [timestamps objectForKey:eventKey];
         
+        // the action has already been called
         if (timestamp) {
-            
-            if ([timestamp doubleValue] < currentTimestamp)
+            if (currentTimestamp < [timestamp doubleValue])
             {
+                // we do nothing
+                // unless...
                 if (resetBlocking)
                 {
-                    [self fireTarget:target selector:aSelector];
-                    [self registerTimestamp:currentTimestamp+seconds forKey:eventKey];
+                    [self fireEffectivelyTarget:target
+                                       selector:aSelector
+                               blockFiresDuring:seconds
+                         withReferenceTimestamp:currentTimestamp
+                                        withKey:eventKey];
                 }
             }
+            
+            
+            // the 'blocking time' has been passed over
             else
             {
-                [self fireTarget:target selector:aSelector];
-                [self registerTimestamp:currentTimestamp+seconds
-                                 forKey:eventKey];
+                [self fireEffectivelyTarget:target
+                                   selector:aSelector
+                           blockFiresDuring:seconds
+                     withReferenceTimestamp:currentTimestamp
+                                    withKey:eventKey];
             }
         }
-
-        [self fireTarget:target selector:aSelector];
-        [self registerTimestamp:currentTimestamp+seconds forKey:eventKey];
+        
+        
+        // the action has never been called
+        else
+        {
+            [self fireEffectivelyTarget:target
+                               selector:aSelector
+                       blockFiresDuring:seconds
+                 withReferenceTimestamp:currentTimestamp
+                                withKey:eventKey];
+        }
     }
 }
 
+
++ (void)fireEffectivelyTarget:(id)target
+                     selector:(SEL)aSelector
+             blockFiresDuring:(NSTimeInterval)seconds
+       withReferenceTimestamp:(NSTimeInterval)currentTimestamp
+                      withKey:(id)eventKey
+{
+    [self fireTarget:target selector:aSelector];
+    [self registerTimestamp:currentTimestamp+seconds forKey:eventKey];
+}
+
+
+
+
+
+
+/**************************************/
+#pragma mark - Aux methods
+/**************************************/
 
 
 + (void)fireTarget:(id)target selector:(SEL)aSelector
@@ -74,7 +126,7 @@ static NSMutableDictionary *timestamps = nil;
                    forKey:key];
 }
 
-                
+
 + (NSTimeInterval)currentTimestamp
 {
     return [[NSDate date] timeIntervalSinceReferenceDate];
