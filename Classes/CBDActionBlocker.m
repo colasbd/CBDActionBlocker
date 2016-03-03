@@ -11,18 +11,27 @@
 // jojo see and remove
 //static NSMutableDictionary *retainedTargetAndArgumentsForSecondMethod = nil;
 
-static NSMutableDictionary *timersForSecondMethod = nil;
-static NSMutableDictionary *timersForThirdMethod = nil;
 
-static NSMutableDictionary *timestampsForFirstMethod = nil;
-static NSMutableDictionary *timestampsForSecondMethod = nil;
-static NSMutableDictionary *timestampsForThirdMethod = nil;
-
-static NSLock *lockForFirstMethod = nil;
-static NSLock *lockForSecondMethod = nil;
-static NSLock *lockForThirdMethod = nil;
 
 static NSTimeInterval const kEpsilon = 0.0001f;
+
+
+
+@interface CBDActionBlocker ()
+
+@property (nonatomic, strong, readwrite) NSMutableDictionary *timersForSecondMethod;
+@property (nonatomic, strong, readwrite) NSMutableDictionary *timersForThirdMethod;
+
+@property (nonatomic, strong, readwrite) NSMutableDictionary *timestampsForFirstMethod;
+@property (nonatomic, strong, readwrite) NSMutableDictionary *timestampsForSecondMethod;
+@property (nonatomic, strong, readwrite) NSMutableDictionary *timestampsForThirdMethod;
+
+@property (nonatomic, strong, readwrite) NSLock *lockForFirstMethod;
+@property (nonatomic, strong, readwrite) NSLock *lockForSecondMethod;
+@property (nonatomic, strong, readwrite) NSLock *lockForThirdMethod;
+
+@end
+
 
 
 @implementation CBDActionBlocker
@@ -33,30 +42,68 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 /**************************************/
 
 
-+ (void)initialize
+// jojo remove
+//+ (void)initialize
+//{
+//    if (self == [CBDActionBlocker class])
+//    {
+//        static dispatch_once_t onceToken;
+//        dispatch_once(&onceToken, ^
+//                      {
+//                          // jojo see and remove
+////                          retainedTargetAndArgumentsForSecondMethod = [NSMutableDictionary dictionary];
+//                          
+//                          timersForThirdMethod = [NSMutableDictionary dictionary];
+//                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
+//                          
+//                          timestampsForFirstMethod = [NSMutableDictionary dictionary];
+//                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
+//                          timestampsForThirdMethod = [NSMutableDictionary dictionary];
+//                          
+//                          lockForFirstMethod = [[NSLock alloc] init];
+//                          lockForSecondMethod = [[NSLock alloc] init];
+//                          lockForThirdMethod = [[NSLock alloc] init];
+//                      });
+//    }
+//}
+
+
+
++ (instancetype)actionBlocker
 {
-    if (self == [CBDActionBlocker class])
-    {
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^
-                      {
-                          // jojo see and remove
-//                          retainedTargetAndArgumentsForSecondMethod = [NSMutableDictionary dictionary];
-                          
-                          timersForThirdMethod = [NSMutableDictionary dictionary];
-                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
-                          
-                          timestampsForFirstMethod = [NSMutableDictionary dictionary];
-                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
-                          timestampsForThirdMethod = [NSMutableDictionary dictionary];
-                          
-                          lockForFirstMethod = [[NSLock alloc] init];
-                          lockForSecondMethod = [[NSLock alloc] init];
-                          lockForThirdMethod = [[NSLock alloc] init];
-                      });
-    }
+    static id _sharedInstance = nil ;
+    static dispatch_once_t onceToken;
+    
+    dispatch_once(&onceToken,
+                  ^{
+                      _sharedInstance = [[self alloc] init];
+                  });
+    
+    return _sharedInstance;
 }
 
+
+
+- (instancetype)init
+{
+    self = [super init];
+    
+    if (self)
+    {
+        _timersForThirdMethod = [NSMutableDictionary dictionary];
+        _timestampsForSecondMethod = [NSMutableDictionary dictionary];
+        
+        _timestampsForFirstMethod = [NSMutableDictionary dictionary];
+        _timestampsForSecondMethod = [NSMutableDictionary dictionary];
+        _timestampsForThirdMethod = [NSMutableDictionary dictionary];
+        
+        _lockForFirstMethod = [[NSLock alloc] init];
+        _lockForSecondMethod = [[NSLock alloc] init];
+        _lockForThirdMethod = [[NSLock alloc] init];
+    }
+    
+    return self;
+}
 
 
 
@@ -71,8 +118,19 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 #pragma mark - Main method
 /**************************************/
 
++ (void)fireTarget:(id)target
+          selector:(SEL)aSelector
+  blockFiresDuring:(NSTimeInterval)seconds
+{
+    [[self actionBlocker] fireTarget:target
+                            selector:aSelector
+                    blockFiresDuring:seconds];
+}
 
-+ (void)fireTarget:(id)target selector:(SEL)aSelector blockFiresDuring:(NSTimeInterval)seconds
+
+- (void)fireTarget:(id)target
+          selector:(SEL)aSelector
+  blockFiresDuring:(NSTimeInterval)seconds
 {
     /*
      *******
@@ -99,23 +157,23 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Lock
      */
-    [lockForFirstMethod lock];
+    [self.lockForFirstMethod lock];
     
     
     /*
      Core
      */
-    NSTimeInterval currentTimestamp = [self currentTimestamp];
+    NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
-    NSArray *eventKey = [self eventKeyForTarget:target
+    NSArray *eventKey = [[self class] eventKeyForTarget:target
                                        selector:aSelector
-                                   blockingFlag:nil];
+                                           blockingFlag:nil];
 
     NSNumber *timestamp;
     
-    @synchronized(timestampsForFirstMethod)
+    @synchronized(self.timestampsForFirstMethod)
     {
-        timestamp = [timestampsForFirstMethod objectForKey:eventKey];
+        timestamp = [self.timestampsForFirstMethod objectForKey:eventKey];
     }
     
     // the action has already been called
@@ -154,11 +212,11 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Unlock
      */
-    [lockForFirstMethod unlock];
+    [self.lockForFirstMethod unlock];
 }
 
 
-+ (void)fireEffectivelyTarget:(id)target
+- (void)fireEffectivelyTarget:(id)target
                      selector:(SEL)aSelector
              blockFiresDuring:(NSTimeInterval)seconds
        withReferenceTimestamp:(NSTimeInterval)currentTimestamp
@@ -167,14 +225,10 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     [target performSelectorOnMainThread:aSelector
                              withObject:nil
                           waitUntilDone:NO];
-
-    // jojo check this
-//    [self fireTarget:target selector:aSelector arguments:nil delay:0 withKey:eventKey];
     
-    [self registerTimestamp:currentTimestamp+seconds
+    [[self class] registerTimestamp:currentTimestamp+seconds
                      forKey:eventKey
-               inDictionary:timestampsForFirstMethod];
-    
+               inDictionary:self.timestampsForFirstMethod];
 }
 
 
@@ -209,6 +263,20 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                              delay:(NSTimeInterval)seconds
                   withBlockingFlag:(NSString *)blockingFlag
 {
+    [[self actionBlocker] waitAndBlockThenFireTarget:target
+                                            selector:aSelector
+                                           arguments:arguments
+                                               delay:seconds
+                                    withBlockingFlag:blockingFlag];
+}
+
+
+- (void)waitAndBlockThenFireTarget:(id)target
+                          selector:(SEL)aSelector
+                         arguments:(NSArray *)arguments
+                             delay:(NSTimeInterval)seconds
+                  withBlockingFlag:(NSString *)blockingFlag
+{
     /*
      *******
      BARRIER
@@ -230,23 +298,23 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Lock
      */
-    [lockForSecondMethod lock];
+    [self.lockForSecondMethod lock];
     
     
     /*
      Core
      */
-    NSTimeInterval currentTimestamp = [self currentTimestamp];
+    NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
-    NSArray *eventKey = [self eventKeyForTarget:target
+    NSArray *eventKey = [[self class] eventKeyForTarget:target
                                        selector:aSelector
                                    blockingFlag:blockingFlag];
     
     
     NSNumber *timestamp;
-    @synchronized(timestampsForSecondMethod)
+    @synchronized(self.timestampsForSecondMethod)
     {
-        timestamp = [timestampsForSecondMethod objectForKey:eventKey];
+        timestamp = [self.timestampsForSecondMethod objectForKey:eventKey];
     }
     
     // the action has already been called
@@ -286,11 +354,11 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Unlock
      */
-    [lockForSecondMethod unlock];
+    [self.lockForSecondMethod unlock];
 }
 
 
-+ (void)waitAndBlockThenFireEffectivelyTarget:(id)target
+- (void)waitAndBlockThenFireEffectivelyTarget:(id)target
                                      selector:(SEL)aSelector
                                     arguments:(NSArray *)arguments
                              withBlockingFlag:(NSString *)blockingFlag
@@ -298,14 +366,11 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                        withReferenceTimestamp:(NSTimeInterval)currentTimestamp
                                       withKey:(id)eventKey
 {
-    // jojo see and delete
-//    [self fireTarget:target selector:aSelector arguments:arguments delay:seconds withKey:eventKey];
-    
-    [self registerTimestamp:currentTimestamp+seconds
+    [[self class] registerTimestamp:currentTimestamp+seconds
                      forKey:eventKey
-               inDictionary:timestampsForSecondMethod];
+               inDictionary:self.timestampsForSecondMethod];
     
-    NSDictionary *userInfo = [self userInfoDictionaryWithTarget:target
+    NSDictionary *userInfo = [[self class] userInfoDictionaryWithTarget:target
                                                        selector:aSelector
                                                       arguments:arguments
                                                withBlockingFlag:blockingFlag];
@@ -315,28 +380,15 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                                        selector:@selector(performSecondMethod:)
                                                        userInfo:userInfo
                                                         repeats:NO];
-    timersForSecondMethod[eventKey] = newTimer;
-
-    // jojo see and remove
-//    /*
-//     We remove the key once done
-//     */
-//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-//                                 (int64_t)(currentTimestamp+seconds * NSEC_PER_SEC)),
-//                   dispatch_get_main_queue(), ^{
-//                       @synchronized(timestampsForSecondMethod)
-//                       {
-//                           timestampsForSecondMethod[eventKey] = nil;
-//                       }
-//                   });
+    self.timersForSecondMethod[eventKey] = newTimer;
 }
 
 
 
-+ (void)performSecondMethod:(NSTimer *)timer
+- (void)performSecondMethod:(NSTimer *)timer
 {
-    [self fireTimer:timer
-      andRemoveFrom:timersForSecondMethod];
+    [[self class] fireTimer:timer
+              andRemoveFrom:self.timersForSecondMethod];
 }
 
 
@@ -346,8 +398,19 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 #pragma mark ________________________________________________________________
 
 
-
 + (void)fireAndCancelPreviousCallsWithTarget:(id)target
+                                    selector:(SEL)aSelector
+                                   arguments:(NSArray *)arguments
+                                   withDelay:(NSTimeInterval)delayInSeconds
+{
+    [[self actionBlocker] fireAndCancelPreviousCallsWithTarget:target
+                                                      selector:aSelector
+                                                     arguments:arguments
+                                                     withDelay:delayInSeconds];
+}
+
+
+- (void)fireAndCancelPreviousCallsWithTarget:(id)target
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
@@ -373,7 +436,7 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Lock
      */
-    [lockForThirdMethod lock];
+    [self.lockForThirdMethod lock];
     
     
 
@@ -381,15 +444,15 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Core
      */
-    NSTimeInterval currentTimestamp = [self currentTimestamp];
+    NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
     NSArray *eventKey = @[target, NSStringFromSelector(aSelector)];
     
     
     NSNumber *timestamp;
-    @synchronized(timestampsForThirdMethod)
+    @synchronized(self.timestampsForThirdMethod)
     {
-        timestamp = [timestampsForThirdMethod objectForKey:eventKey];
+        timestamp = [self.timestampsForThirdMethod objectForKey:eventKey];
     }
     
     // the action has already been called
@@ -407,9 +470,9 @@ static NSTimeInterval const kEpsilon = 0.0001f;
         {
             // We cancel the previous call
             
-            @synchronized(timersForThirdMethod)
+            @synchronized(self.timersForThirdMethod)
             {
-                NSTimer *timer = timersForThirdMethod[eventKey];
+                NSTimer *timer = self.timersForThirdMethod[eventKey];
                 [timer invalidate];
             }
             
@@ -438,13 +501,13 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      Unlock
      */
-    [lockForThirdMethod unlock];
+    [self.lockForThirdMethod unlock];
 }
 
 
 
 
-+ (void)fireAndCancelPreviousCallsEffectivelyWithTarget:(id)target
+- (void)fireAndCancelPreviousCallsEffectivelyWithTarget:(id)target
                                                selector:(SEL)aSelector
                                               arguments:(NSArray *)arguments
                                               withDelay:(NSTimeInterval)delayInSeconds
@@ -455,15 +518,15 @@ static NSTimeInterval const kEpsilon = 0.0001f;
     /*
      We register the timestamp
      */
-    [self registerTimestamp:currentTimestamp+delayInSeconds
+    [[self class] registerTimestamp:currentTimestamp+delayInSeconds
                      forKey:eventKey
-               inDictionary:timestampsForThirdMethod];
+               inDictionary:self.timestampsForThirdMethod];
     
     
     /*
      Core
      */
-    NSDictionary *userInfo = [self userInfoDictionaryWithTarget:target
+    NSDictionary *userInfo = [[self class] userInfoDictionaryWithTarget:target
                                                        selector:aSelector
                                                       arguments:arguments
                                                withBlockingFlag:nil];
@@ -475,19 +538,57 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                               userInfo:userInfo
                                                repeats:NO];
     
-    @synchronized(timersForThirdMethod)
+    @synchronized(self.timersForThirdMethod)
     {
-        timersForThirdMethod[eventKey] = newTimer;
+        self.timersForThirdMethod[eventKey] = newTimer;
     }
 }
 
 
 
-+ (void)performThirdMethod:(NSTimer *)timer
+- (void)performThirdMethod:(NSTimer *)timer
 {
-    [self fireTimer:timer
-      andRemoveFrom:timersForThirdMethod];
+    [[self class] fireTimer:timer
+              andRemoveFrom:self.timersForThirdMethod];
 }
+
+
+
+
+
+#pragma mark -
+#pragma mark ________________________________________________________________
+#pragma mark   ■■■■■■■■■■■■■■ PERFORM ALL PENDING ACTIONS ■■■■■■■■■■■■■■
+#pragma mark ________________________________________________________________
+
+
++ (void)performAllPendingActions
+{
+    [[self actionBlocker] performAllPendingActions];
+}
+
+
+- (void)performAllPendingActions
+{
+    /*
+     For the thid method
+     */
+    for (NSTimer *timer in self.timersForSecondMethod)
+    {
+        [self performSecondMethod:timer];
+    }
+    
+    /*
+     For the thid method
+     */
+    for (NSTimer *timer in self.timersForThirdMethod)
+    {
+        [self performThirdMethod:timer];
+    }
+}
+
+
+
 
 
 
@@ -496,70 +597,6 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 #pragma mark ________________________________________________________________
 #pragma mark   ■■■■■■■■■■■■■■ AUX METHODS ■■■■■■■■■■■■■■
 #pragma mark ________________________________________________________________
-
-
-
-//+ (void)fireTarget:(id)target
-//          selector:(SEL)aSelector
-//         arguments:(NSArray *)arguments
-//             delay:(NSTimeInterval)delay
-//           withKey:(id)eventKey
-//{
-//    // We suppress the warning
-//#pragma clang diagnostic push
-//#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-//    
-//    /*
-//     We retain the arguments
-//     */
-//    if (eventKey)
-//    {
-//        if (arguments)
-//        {
-//            retainedTargetAndArgumentsForSecondMethod[eventKey] = @[target, arguments];
-//        }
-//        else
-//        {
-//            retainedTargetAndArgumentsForSecondMethod[eventKey] = target;
-//        }
-//    }
-//    
-//    
-//    if (delay < kEpsilon)
-//    {
-//        dispatch_async(dispatch_get_main_queue(),
-//                       ^{
-//                           [[self class] performInvocationForTarget:target
-//                                                       withSelector:aSelector
-//                                                       andArguments:arguments];
-//                           
-//                           /*
-//                            We release the arguments
-//                            */
-//                            if (eventKey)
-//                            {
-//                                retainedTargetAndArgumentsForSecondMethod[eventKey] = nil;
-//                            }
-//                       });
-//    }
-//    else
-//    {
-//        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(),
-//                       ^{
-//                           [self fireTarget:target
-//                                   selector:aSelector
-//                                  arguments:arguments
-//                                      delay:0
-//                                    withKey:nil];
-//                       });
-//    }
-//
-//#pragma clang diagnostic pop
-//    
-//}
-
-
-
 
 
 /**************************************/
@@ -632,47 +669,53 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 + (void)fireTimer:(NSTimer *)timer
     andRemoveFrom:(NSMutableDictionary *)dictionaryOfTimers
 {
-    /*
-     We get the infos
-     */
-    NSDictionary *userInfo = [timer userInfo];
-    
-    id target = userInfo[@"target"];
-    SEL selector = [userInfo[@"selector"] pointerValue];
-    NSArray *arguments = userInfo[@"arguments"];
-    NSString *blockingFlag = userInfo[@"blockingFlag"];
-    
-    
-    
-    /*
-     We invalidate the timer
-     */
-    [timer invalidate];
-    
-    
-    
-    /*
-     We release the timer
-     */
-    NSArray *eventKey = [self eventKeyForTarget:target
-                                       selector:selector
-                                   blockingFlag:blockingFlag];
-  
-    @synchronized(dictionaryOfTimers)
+    @synchronized(timer)
     {
-        dictionaryOfTimers[eventKey] = nil;
+        if ([timer isValid])
+        {
+            /*
+             We get the infos
+             */
+            NSDictionary *userInfo = [timer userInfo];
+            
+            id target = userInfo[@"target"];
+            SEL selector = [userInfo[@"selector"] pointerValue];
+            NSArray *arguments = userInfo[@"arguments"];
+            NSString *blockingFlag = userInfo[@"blockingFlag"];
+            
+            
+            
+            /*
+             We invalidate the timer
+             */
+            [timer invalidate];
+            
+            
+            
+            /*
+             We release the timer
+             */
+            NSArray *eventKey = [self eventKeyForTarget:target
+                                               selector:selector
+                                           blockingFlag:blockingFlag];
+            
+            @synchronized(dictionaryOfTimers)
+            {
+                dictionaryOfTimers[eventKey] = nil;
+            }
+            
+            
+            /*
+             Core
+             */
+            dispatch_async(dispatch_get_main_queue(),
+                           ^{
+                               [self performInvocationForTarget:target
+                                                   withSelector:selector
+                                                   andArguments:arguments];
+                           });
+        }
     }
-    
-    
-    /*
-     Core
-     */
-    dispatch_async(dispatch_get_main_queue(),
-                   ^{
-                       [self performInvocationForTarget:target
-                                           withSelector:selector
-                                           andArguments:arguments];
-                   });
 }
 
 

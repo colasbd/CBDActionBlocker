@@ -44,15 +44,15 @@
 
 
 
-
-
-
 + (void)fireAndCancelPreviousCallsWithTarget:(id)target
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds;
 
 
+
+
++ (void)performAllPendingActions;
 
 
 
