@@ -8,8 +8,8 @@
 #import "CBDActionBlocker.h"
 
 
-
-static NSMutableDictionary *retainedTargetAndArgumentsForSecondMethod = nil;
+// jojo see and remove
+//static NSMutableDictionary *retainedTargetAndArgumentsForSecondMethod = nil;
 
 static NSMutableDictionary *timersForSecondMethod = nil;
 static NSMutableDictionary *timersForThirdMethod = nil;
@@ -40,7 +40,8 @@ static NSTimeInterval const kEpsilon = 0.0001f;
         static dispatch_once_t onceToken;
         dispatch_once(&onceToken, ^
                       {
-                          retainedTargetAndArgumentsForSecondMethod = [NSMutableDictionary dictionary];
+                          // jojo see and remove
+//                          retainedTargetAndArgumentsForSecondMethod = [NSMutableDictionary dictionary];
                           
                           timersForThirdMethod = [NSMutableDictionary dictionary];
                           timestampsForSecondMethod = [NSMutableDictionary dictionary];
@@ -314,7 +315,7 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                                        selector:@selector(performSecondMethod:)
                                                        userInfo:userInfo
                                                         repeats:NO];
-    
+    timersForSecondMethod[eventKey] = newTimer;
 
     // jojo see and remove
 //    /*
@@ -334,43 +335,8 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 
 + (void)performSecondMethod:(NSTimer *)timer
 {
-    /*
-     We get the infos
-     */
-    NSDictionary *userInfo = [timer userInfo];
-    
-    id target = userInfo[@"target"];
-    SEL selector = [userInfo[@"selector"] pointerValue];
-    NSArray *arguments = userInfo[@"arguments"];
-    
-    
-    
-    /*
-     We invalidate the timer
-     */
-    [timer invalidate];
-    
-    
-    
-    /*
-     We release the timer
-     */
-    NSArray *eventKey = @[target, NSStringFromSelector(selector)];
-    @synchronized(timersForThirdMethod)
-    {
-        timersForThirdMethod[eventKey] = nil;
-    }
-    
-    
-    /*
-     Core
-     */
-    dispatch_async(dispatch_get_main_queue(),
-                   ^{
-                       [self performInvocationForTarget:target
-                                           withSelector:selector
-                                           andArguments:arguments];
-                   });
+    [self fireTimer:timer
+      andRemoveFrom:timersForSecondMethod];
 }
 
 
@@ -499,7 +465,8 @@ static NSTimeInterval const kEpsilon = 0.0001f;
      */
     NSDictionary *userInfo = [self userInfoDictionaryWithTarget:target
                                                        selector:aSelector
-                                                      arguments:arguments];
+                                                      arguments:arguments
+                                               withBlockingFlag:nil];
 
     NSTimer *newTimer;
     newTimer = [NSTimer scheduledTimerWithTimeInterval:delayInSeconds
@@ -518,43 +485,8 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 
 + (void)performThirdMethod:(NSTimer *)timer
 {
-    /*
-     We get the infos
-     */
-    NSDictionary *userInfo = [timer userInfo];
-    
-    id target = userInfo[@"target"];
-    SEL selector = [userInfo[@"selector"] pointerValue];
-    NSArray *arguments = userInfo[@"arguments"];
-    
-    
-    
-    /*
-     We invalidate the timer
-     */
-    [timer invalidate];
-
-    
-    
-    /*
-     We release the timer
-     */
-    NSArray *eventKey = @[target, NSStringFromSelector(selector)];
-    @synchronized(timersForThirdMethod)
-    {
-        timersForThirdMethod[eventKey] = nil;
-    }
-    
-    
-    /*
-     Core
-     */
-    dispatch_async(dispatch_get_main_queue(),
-                   ^{                       
-                       [self performInvocationForTarget:target
-                                           withSelector:selector
-                                           andArguments:arguments];
-                   });
+    [self fireTimer:timer
+      andRemoveFrom:timersForThirdMethod];
 }
 
 
