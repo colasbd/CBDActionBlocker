@@ -374,8 +374,9 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                                        selector:aSelector
                                                       arguments:arguments
                                                withBlockingFlag:blockingFlag];
-    
-    NSTimer *newTimer = [NSTimer scheduledTimerWithTimeInterval:currentTimestamp+seconds
+
+    NSTimeInterval delayForTimer = currentTimestamp + seconds - [[self class] currentTimestamp];
+    NSTimer *newTimer = [NSTimer scheduledTimerWithTimeInterval:delayForTimer
                                                          target:self
                                                        selector:@selector(performSecondMethod:)
                                                        userInfo:userInfo
@@ -392,6 +393,12 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 }
 
 
+
+
+
+
+
+
 #pragma mark -
 #pragma mark ________________________________________________________________
 #pragma mark   ■■■■■■■■■■■■■■ THIRD BLOCKING FEATURE ■■■■■■■■■■■■■■
@@ -402,11 +409,13 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
+                               resetTheDelay:(BOOL)resetingTheDelay
 {
     [[self actionBlocker] fireAndCancelPreviousCallsWithTarget:target
                                                       selector:aSelector
                                                      arguments:arguments
-                                                     withDelay:delayInSeconds];
+                                                     withDelay:delayInSeconds
+                                                 resetTheDelay:(BOOL)resetingTheDelay];
 }
 
 
@@ -414,6 +423,7 @@ static NSTimeInterval const kEpsilon = 0.0001f;
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
+                               resetTheDelay:(BOOL)resetingTheDelay
 {
     /*
      *******
@@ -470,16 +480,26 @@ static NSTimeInterval const kEpsilon = 0.0001f;
         {
             // We cancel the previous call
             
+            NSTimeInterval newDelay = delayInSeconds;
+            
             @synchronized(self.timersForThirdMethod)
             {
                 NSTimer *timer = self.timersForThirdMethod[eventKey];
+                if (resetingTheDelay)
+                {
+                    newDelay = delayInSeconds - timer.fireDate.timeIntervalSinceNow;
+                    newDelay = newDelay<0?0:newDelay;
+                }
+                
                 [timer invalidate];
             }
+            
+
             
             [self fireAndCancelPreviousCallsEffectivelyWithTarget:target
                                                          selector:aSelector
                                                         arguments:arguments
-                                                        withDelay:delayInSeconds
+                                                        withDelay:newDelay
                                            withReferenceTimestamp:currentTimestamp];
         }
     }

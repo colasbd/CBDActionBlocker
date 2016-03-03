@@ -44,13 +44,19 @@
 
 
 
+
+
+
 + (void)fireAndCancelPreviousCallsWithTarget:(id)target
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
-                                   withDelay:(NSTimeInterval)delayInSeconds;
+                                   withDelay:(NSTimeInterval)delayInSeconds
+                               resetTheDelay:(BOOL)resetingTheDelay;
 
 
 
+
+#pragma mark - Perform all pending actions
 
 + (void)performAllPendingActions;
 
