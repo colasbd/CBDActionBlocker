@@ -8,12 +8,6 @@
 #import "CBDActionBlocker.h"
 
 
-// jojo see and remove
-//static NSMutableDictionary *retainedTargetAndArgumentsForSecondMethod = nil;
-
-
-
-static NSTimeInterval const kEpsilon = 0.0001f;
 
 
 
@@ -34,39 +28,15 @@ static NSTimeInterval const kEpsilon = 0.0001f;
 
 
 
+
+
+
 @implementation CBDActionBlocker
 
 
 /**************************************/
 #pragma mark - Create global data at initialize
 /**************************************/
-
-
-// jojo remove
-//+ (void)initialize
-//{
-//    if (self == [CBDActionBlocker class])
-//    {
-//        static dispatch_once_t onceToken;
-//        dispatch_once(&onceToken, ^
-//                      {
-//                          // jojo see and remove
-////                          retainedTargetAndArgumentsForSecondMethod = [NSMutableDictionary dictionary];
-//                          
-//                          timersForThirdMethod = [NSMutableDictionary dictionary];
-//                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
-//                          
-//                          timestampsForFirstMethod = [NSMutableDictionary dictionary];
-//                          timestampsForSecondMethod = [NSMutableDictionary dictionary];
-//                          timestampsForThirdMethod = [NSMutableDictionary dictionary];
-//                          
-//                          lockForFirstMethod = [[NSLock alloc] init];
-//                          lockForSecondMethod = [[NSLock alloc] init];
-//                          lockForThirdMethod = [[NSLock alloc] init];
-//                      });
-//    }
-//}
-
 
 
 + (instancetype)actionBlocker
