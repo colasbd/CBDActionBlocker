@@ -6,11 +6,11 @@ Pod::Spec.new do |s|
   s.summary      = "CBDActionBlocker provides an NSTimer-like class for blocking method calls."
 
   s.author       = { "Colas Bardavid" => "colas.bardavid@gmail.com" }
-  s.homepage     = "https://colasjojo@bitbucket.org/colasjojo/cbdactionblocker.git"
+  s.homepage     = "https://github.com/colasjojo/CBDActionBlocker"
 
   s.license      = { :type => 'MIT'}
 
-  s.source       = { :git => 'https://colasjojo@bitbucket.org/colasjojo/cbdactionblocker.git', 
+  s.source       = { :git => 'https://github.com/colasjojo/CBDActionBlocker.git', 
                      :tag =>  "#{s.version}" }  
 
   s.framework    = 'Foundation'
