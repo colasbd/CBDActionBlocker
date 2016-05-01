@@ -46,7 +46,15 @@
 
 
 
-
+/**
+ This method removes the previous action that was forecast by a new one.
+ The comparison of the actions is made only depending on `target` and `aSelector`.
+ During the delay given, the next calls to this method will again remove the previous calls.
+ 
+ If `resetingTheDelay` is set to YES, the `delayInSeconds` will be started again.
+ 
+ If not, the previous delay will be used.
+ */
 + (void)fireAndCancelPreviousCallsWithTarget:(id)target
                                     selector:(SEL)aSelector
                                    arguments:(NSArray *)arguments
