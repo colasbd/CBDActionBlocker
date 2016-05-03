@@ -10,11 +10,18 @@
 @interface CBDActionBlocker : NSObject
 
 /**
- This method fires the selector unless it is blocked.
+ This method fires the selector (now) 
+ unless this method was previsously called (with the same `target` and `selector`)
+ with a delay "still active"
  */
-+ (void)fireTarget:(id)target
-          selector:(SEL)aSelector
-  blockFiresDuring:(NSTimeInterval)seconds;
++ (void)ifNotBlockedFireNow: (SEL)selector
+                   onTarget: (id)target
+              blockingDelay: (NSTimeInterval)blockingDelay;
+
+// OLD API
+//+ (void)fireTarget:(id)target
+//          selector:(SEL)aSelector
+//  blockFiresDuring:(NSTimeInterval)seconds;
 
 
 
@@ -31,35 +38,51 @@
  That means that same `(target, aSelector)` will be blocked if they are
  called with the same blockingFlag.
  
- *----*
- 
- So, this debouncing with arguments.
+ This methods achieves "debouncing with arguments".
  */
-+ (void)waitAndBlockThenFireTarget:(id)target
-                          selector:(SEL)aSelector
-                         arguments:(NSArray *)arguments
-                             delay:(NSTimeInterval)delayInSeconds
-                  withBlockingFlag:(NSString *)blockingFlag;
 
++ (void)ifNotBlockedFireAfterDelay:(SEL)selector
+                          onTarget:(id)target
+                         arguments:(nullable NSArray *)arguments
+                     blockingDelay:(NSTimeInterval)blockingDelay
+             identifierForBlocking:(nullable NSString *)blockingFlag;
+
+
+// OLD API
+//+ (void)waitAndBlockThenFireTarget:(id)target
+//                          selector:(SEL)aSelector
+//                         arguments:(NSArray *)arguments
+//                             delay:(NSTimeInterval)delayInSeconds
+//                  withBlockingFlag:(NSString *)blockingFlag;
 
 
 
 
 
 /**
- This method removes the previous action that was forecast by a new one.
+ This method removes the previous action that was scheduled by a new one.
  The comparison of the actions is made only depending on `target` and `aSelector`.
- During the delay given, the next calls to this method will again remove the previous calls.
+ During the given delay, the next calls to this method will again remove the previous calls.
+ 
+ So, the argument used with `target` and `aSelector` will be the last one given.
  
  If `resetingTheDelay` is set to YES, the `delayInSeconds` will be started again.
  
  If not, the previous delay will be used.
  */
-+ (void)fireAndCancelPreviousCallsWithTarget:(id)target
-                                    selector:(SEL)aSelector
+
++ (void)cancelPreviousCallsAndFireAfterDelay:(SEL)selector
+                                    onTarget:(id)target
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
-                               resetTheDelay:(BOOL)resetingTheDelay;
+                               resetTheDelay:(BOOL)resetTheDelay;
+
+// OLD API
+//+ (void)fireAndCancelPreviousCallsWithTarget:(id)target
+//                                    selector:(SEL)aSelector
+//                                   arguments:(NSArray *)arguments
+//                                   withDelay:(NSTimeInterval)delayInSeconds
+//                               resetTheDelay:(BOOL)resetingTheDelay;
 
 
 
