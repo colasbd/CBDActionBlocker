@@ -14,9 +14,9 @@
  unless this method was previsously called (with the same `target` and `selector`)
  with a delay "still active"
  */
-+ (void)ifNotBlockedFireNow: (SEL)selector
-                   onTarget: (id)target
-              blockingDelay: (NSTimeInterval)blockingDelay;
++ (void)ifNotBlockedFireNow:(SEL)selector
+                   onTarget:(id)target
+              blockingDelay:(NSTimeInterval)blockingDelay;
 
 // OLD API
 //+ (void)fireTarget:(id)target
@@ -45,7 +45,7 @@
                           onTarget:(id)target
                          arguments:(nullable NSArray *)arguments
                      blockingDelay:(NSTimeInterval)blockingDelay
-             identifierForBlocking:(nullable NSString *)blockingFlag;
+             identifierForBlocking:(nullable NSString *)identifierForBlocking;
 
 
 // OLD API
@@ -73,7 +73,7 @@
 
 + (void)cancelPreviousCallsAndFireAfterDelay:(SEL)selector
                                     onTarget:(id)target
-                                   arguments:(NSArray *)arguments
+                                   arguments:(nullable NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
                                resetTheDelay:(BOOL)resetTheDelay;
 

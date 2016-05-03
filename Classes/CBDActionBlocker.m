@@ -88,13 +88,13 @@
 #pragma mark - Main method
 /**************************************/
 
-+ (void)fireTarget:(id)target
-          selector:(SEL)aSelector
-  blockFiresDuring:(NSTimeInterval)seconds
++ (void)ifNotBlockedFireNow:(SEL)selector
+                   onTarget:(id)target
+              blockingDelay:(NSTimeInterval)blockingDelay;
 {
     [[self actionBlocker] fireTarget:target
-                            selector:aSelector
-                    blockFiresDuring:seconds];
+                            selector:selector
+                    blockFiresDuring:blockingDelay];
 }
 
 
@@ -136,9 +136,9 @@
     NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
     NSArray *eventKey = [[self class] eventKeyForTarget:target
-                                       selector:aSelector
-                                           blockingFlag:nil];
-
+                                               selector:aSelector
+                                  identifierForBlocking:nil];
+    
     NSNumber *timestamp;
     
     @synchronized(self.timestampsForFirstMethod)
@@ -197,8 +197,8 @@
                           waitUntilDone:NO];
     
     [[self class] registerTimestamp:currentTimestamp+seconds
-                     forKey:eventKey
-               inDictionary:self.timestampsForFirstMethod];
+                             forKey:eventKey
+                       inDictionary:self.timestampsForFirstMethod];
 }
 
 
@@ -227,25 +227,25 @@
 #pragma mark - Main method
 /**************************************/
 
-+ (void)waitAndBlockThenFireTarget:(id)target
-                          selector:(SEL)aSelector
-                         arguments:(NSArray *)arguments
-                             delay:(NSTimeInterval)seconds
-                  withBlockingFlag:(NSString *)blockingFlag
++ (void)ifNotBlockedFireAfterDelay:(SEL)selector
+                          onTarget:(id)target
+                         arguments:(nullable NSArray *)arguments
+                     blockingDelay:(NSTimeInterval)blockingDelay
+             identifierForBlocking:(nullable NSString *)identifierForBlocking
 {
-    [[self actionBlocker] waitAndBlockThenFireTarget:target
-                                            selector:aSelector
+    [[self actionBlocker] ifNotBlockedFireAfterDelay:selector
+                                            onTarget:target
                                            arguments:arguments
-                                               delay:seconds
-                                    withBlockingFlag:blockingFlag];
+                                       blockingDelay:blockingDelay
+                               identifierForBlocking:identifierForBlocking];
 }
 
 
-- (void)waitAndBlockThenFireTarget:(id)target
-                          selector:(SEL)aSelector
-                         arguments:(NSArray *)arguments
-                             delay:(NSTimeInterval)seconds
-                  withBlockingFlag:(NSString *)blockingFlag
+- (void)ifNotBlockedFireAfterDelay:(SEL)selector
+                          onTarget:(id)target
+                         arguments:(nullable NSArray *)arguments
+                     blockingDelay:(NSTimeInterval)blockingDelay
+             identifierForBlocking:(nullable NSString *)identifierForBlocking
 {
     /*
      *******
@@ -254,9 +254,9 @@
      */
     if (!target
         ||
-        !aSelector
+        !selector
         ||
-        seconds<0)
+        blockingDelay<0)
     {
         return;
     }
@@ -277,8 +277,8 @@
     NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
     NSArray *eventKey = [[self class] eventKeyForTarget:target
-                                       selector:aSelector
-                                   blockingFlag:blockingFlag];
+                                               selector:selector
+                                  identifierForBlocking:identifierForBlocking];
     
     
     NSNumber *timestamp;
@@ -292,13 +292,13 @@
     {
         if (currentTimestamp > [timestamp doubleValue])
         {
-            [self waitAndBlockThenFireEffectivelyTarget:target
-                                               selector:aSelector
-                                               arguments:arguments
-                                       withBlockingFlag:blockingFlag
-                                                  delay:seconds
-                                 withReferenceTimestamp:currentTimestamp
-                                                withKey:eventKey];
+            [self ifNotBlockedFireAfterDelay:selector
+                                    onTarget:target
+                                   arguments:arguments
+                               blockingDelay:blockingDelay
+                       identifierForBlocking:identifierForBlocking
+                      withReferenceTimestamp:currentTimestamp
+                                     withKey:eventKey];
         }
         else
         {
@@ -310,13 +310,13 @@
     // the action has never been called
     else
     {
-        [self waitAndBlockThenFireEffectivelyTarget:target
-                                           selector:aSelector
-                                           arguments:arguments
-                                   withBlockingFlag:blockingFlag
-                                              delay:seconds
-                             withReferenceTimestamp:currentTimestamp
-                                            withKey:eventKey];
+        [self ifNotBlockedFireAfterDelay:selector
+                                onTarget:target
+                               arguments:arguments
+                           blockingDelay:blockingDelay
+                   identifierForBlocking:identifierForBlocking
+                  withReferenceTimestamp:currentTimestamp
+                                 withKey:eventKey];
     }
     
     
@@ -328,24 +328,24 @@
 }
 
 
-- (void)waitAndBlockThenFireEffectivelyTarget:(id)target
-                                     selector:(SEL)aSelector
-                                    arguments:(NSArray *)arguments
-                             withBlockingFlag:(NSString *)blockingFlag
-                                        delay:(NSTimeInterval)seconds
-                       withReferenceTimestamp:(NSTimeInterval)currentTimestamp
-                                      withKey:(id)eventKey
+- (void)ifNotBlockedFireAfterDelay:(SEL)selector
+                          onTarget:(id)target
+                         arguments:(nullable NSArray *)arguments
+                     blockingDelay:(NSTimeInterval)blockingDelay
+             identifierForBlocking:(nullable NSString *)identifierForBlocking
+            withReferenceTimestamp:(NSTimeInterval)currentTimestamp
+                           withKey:(id)eventKey
 {
-    [[self class] registerTimestamp:currentTimestamp+seconds
-                     forKey:eventKey
-               inDictionary:self.timestampsForSecondMethod];
+    [[self class] registerTimestamp:currentTimestamp+blockingDelay
+                             forKey:eventKey
+                       inDictionary:self.timestampsForSecondMethod];
     
     NSDictionary *userInfo = [[self class] userInfoDictionaryWithTarget:target
-                                                       selector:aSelector
-                                                      arguments:arguments
-                                               withBlockingFlag:blockingFlag];
-
-    NSTimeInterval delayForTimer = currentTimestamp + seconds - [[self class] currentTimestamp];
+                                                               selector:selector
+                                                              arguments:arguments
+                                              withIdentifierForBlocking:identifierForBlocking];
+    
+    NSTimeInterval delayForTimer = currentTimestamp + blockingDelay - [[self class] currentTimestamp];
     NSTimer *newTimer = [NSTimer scheduledTimerWithTimeInterval:delayForTimer
                                                          target:self
                                                        selector:@selector(performSecondMethod:)
@@ -369,31 +369,35 @@
 
 
 
+
+
+
 #pragma mark -
 #pragma mark ________________________________________________________________
 #pragma mark   ■■■■■■■■■■■■■■ THIRD BLOCKING FEATURE ■■■■■■■■■■■■■■
 #pragma mark ________________________________________________________________
 
 
-+ (void)fireAndCancelPreviousCallsWithTarget:(id)target
-                                    selector:(SEL)aSelector
+
++ (void)cancelPreviousCallsAndFireAfterDelay:(SEL)selector
+                                    onTarget:(id)target
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
-                               resetTheDelay:(BOOL)resetingTheDelay
+                               resetTheDelay:(BOOL)resetTheDelay
 {
-    [[self actionBlocker] fireAndCancelPreviousCallsWithTarget:target
-                                                      selector:aSelector
+    [[self actionBlocker] cancelPreviousCallsAndFireAfterDelay:selector
+                                                      onTarget:target
                                                      arguments:arguments
                                                      withDelay:delayInSeconds
-                                                 resetTheDelay:(BOOL)resetingTheDelay];
+                                                 resetTheDelay:resetTheDelay];
 }
 
 
-- (void)fireAndCancelPreviousCallsWithTarget:(id)target
-                                    selector:(SEL)aSelector
+- (void)cancelPreviousCallsAndFireAfterDelay:(SEL)selector
+                                    onTarget:(id)target
                                    arguments:(NSArray *)arguments
                                    withDelay:(NSTimeInterval)delayInSeconds
-                               resetTheDelay:(BOOL)resetingTheDelay
+                               resetTheDelay:(BOOL)resetTheDelay
 {
     /*
      *******
@@ -402,7 +406,7 @@
      */
     if (!target
         ||
-        !aSelector
+        !selector
         ||
         delayInSeconds<0)
     {
@@ -419,14 +423,14 @@
     [self.lockForThirdMethod lock];
     
     
-
+    
     
     /*
      Core
      */
     NSTimeInterval currentTimestamp = [[self class] currentTimestamp];
     
-    NSArray *eventKey = @[target, NSStringFromSelector(aSelector)];
+    NSArray *eventKey = @[target, NSStringFromSelector(selector)];
     
     
     NSNumber *timestamp;
@@ -440,11 +444,11 @@
     {
         if (currentTimestamp > [timestamp doubleValue])
         {
-            [self fireAndCancelPreviousCallsEffectivelyWithTarget:target
-                                                         selector:aSelector
-                                                        arguments:arguments
-                                                        withDelay:delayInSeconds
-                                           withReferenceTimestamp:currentTimestamp];
+            [self cancelPreviousCallsAndFireAfterDelay:selector
+                                              onTarget:target
+                                             arguments:arguments
+                                             withDelay:delayInSeconds
+                                withReferenceTimestamp:currentTimestamp];
         }
         else
         {
@@ -455,7 +459,7 @@
             @synchronized(self.timersForThirdMethod)
             {
                 NSTimer *timer = self.timersForThirdMethod[eventKey];
-                if (resetingTheDelay)
+                if (resetTheDelay)
                 {
                     newDelay = delayInSeconds - timer.fireDate.timeIntervalSinceNow;
                     newDelay = newDelay<0?0:newDelay;
@@ -464,13 +468,12 @@
                 [timer invalidate];
             }
             
-
             
-            [self fireAndCancelPreviousCallsEffectivelyWithTarget:target
-                                                         selector:aSelector
-                                                        arguments:arguments
-                                                        withDelay:newDelay
-                                           withReferenceTimestamp:currentTimestamp];
+            [self cancelPreviousCallsAndFireAfterDelay:selector
+                                              onTarget:target
+                                             arguments:arguments
+                                             withDelay:newDelay
+                                withReferenceTimestamp:currentTimestamp];
         }
     }
     
@@ -478,11 +481,11 @@
     // the action has never been called
     else
     {
-       [self fireAndCancelPreviousCallsEffectivelyWithTarget:target
-                                                    selector:aSelector
-                                                   arguments:arguments
-                                                   withDelay:delayInSeconds
-                                      withReferenceTimestamp:currentTimestamp];
+        [self cancelPreviousCallsAndFireAfterDelay:selector
+                                          onTarget:target
+                                         arguments:arguments
+                                         withDelay:delayInSeconds
+                            withReferenceTimestamp:currentTimestamp];
     }
     
     
@@ -496,31 +499,30 @@
 
 
 
-
-- (void)fireAndCancelPreviousCallsEffectivelyWithTarget:(id)target
-                                               selector:(SEL)aSelector
-                                              arguments:(NSArray *)arguments
-                                              withDelay:(NSTimeInterval)delayInSeconds
-                                 withReferenceTimestamp:(NSTimeInterval)currentTimestamp
+- (void)cancelPreviousCallsAndFireAfterDelay:(SEL)selector
+                                    onTarget:(id)target
+                                   arguments:(NSArray *)arguments
+                                   withDelay:(NSTimeInterval)delayInSeconds
+                      withReferenceTimestamp:(NSTimeInterval)currentTimestamp
 {
-    NSArray *eventKey = @[target, NSStringFromSelector(aSelector)];
+    NSArray *eventKey = @[target, NSStringFromSelector(selector)];
     
     /*
      We register the timestamp
      */
     [[self class] registerTimestamp:currentTimestamp+delayInSeconds
-                     forKey:eventKey
-               inDictionary:self.timestampsForThirdMethod];
+                             forKey:eventKey
+                       inDictionary:self.timestampsForThirdMethod];
     
     
     /*
      Core
      */
     NSDictionary *userInfo = [[self class] userInfoDictionaryWithTarget:target
-                                                       selector:aSelector
-                                                      arguments:arguments
-                                               withBlockingFlag:nil];
-
+                                                               selector:selector
+                                                              arguments:arguments
+                                              withIdentifierForBlocking:nil];
+    
     NSTimer *newTimer;
     newTimer = [NSTimer scheduledTimerWithTimeInterval:delayInSeconds
                                                 target:self
@@ -625,7 +627,7 @@
 + (NSDictionary *)userInfoDictionaryWithTarget:(id)target
                                       selector:(SEL)aSelector
                                      arguments:(NSArray *)arguments
-                              withBlockingFlag:(NSString *)blockingFlag
+                     withIdentifierForBlocking:(NSString *)identifierForBlocking
 {
     NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
     
@@ -644,10 +646,10 @@
                      forKey:@"arguments"];
     }
     
-    if (blockingFlag)
+    if (identifierForBlocking)
     {
-        [userInfo setObject:blockingFlag
-                     forKey:@"blockingFlag"];
+        [userInfo setObject:identifierForBlocking
+                     forKey:@"identifierForBlocking"];
     }
     
     return userInfo;
@@ -671,7 +673,7 @@
             id target = userInfo[@"target"];
             SEL selector = [userInfo[@"selector"] pointerValue];
             NSArray *arguments = userInfo[@"arguments"];
-            NSString *blockingFlag = userInfo[@"blockingFlag"];
+            NSString *identifierForBlocking = userInfo[@"identifierForBlocking"];
             
             
             
@@ -687,7 +689,7 @@
              */
             NSArray *eventKey = [self eventKeyForTarget:target
                                                selector:selector
-                                           blockingFlag:blockingFlag];
+                                  identifierForBlocking:identifierForBlocking];
             
             @synchronized(dictionaryOfTimers)
             {
@@ -713,17 +715,17 @@
 
 + (id)eventKeyForTarget:(id)target
                selector:(SEL)selector
-           blockingFlag:(NSString *)blockingFlag
+  identifierForBlocking:(NSString *)identifierForBlocking
 {
     NSArray *eventKey;
     
-    if (!blockingFlag)
+    if (!identifierForBlocking)
     {
         eventKey = @[target, NSStringFromSelector(selector)];
     }
     else
     {
-        eventKey = @[target, NSStringFromSelector(selector), blockingFlag];
+        eventKey = @[target, NSStringFromSelector(selector), identifierForBlocking];
     }
     
     return eventKey;
@@ -757,7 +759,7 @@
         ||
         !theTarget)
     {
-       // do nothing
+        // do nothing
     }
     else
     {
@@ -770,7 +772,7 @@
              idx += 2;
              [invocation setArgument:&obj atIndex:idx];
          }];
-
+        
         result = invocation;
     }
     
@@ -781,8 +783,8 @@
 
 
 + (void)performInvocationForTarget:(id)theTarget
-                     withSelector:(SEL)theSelector
-                     andArguments:(NSArray *)theArguments
+                      withSelector:(SEL)theSelector
+                      andArguments:(NSArray *)theArguments
 {
     NSInvocation *invocation = [self invocationForTarget:theTarget
                                             withSelector:theSelector
